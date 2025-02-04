@@ -1,6 +1,6 @@
 import os
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, ttk
 from PIL import Image, ImageTk
 
 class YOLOAnnotationApp:
@@ -20,9 +20,13 @@ class YOLOAnnotationApp:
         self.bboxes = []
         self.current_bbox = None
 
-        self.class_entry = tk.Entry(root)
-        self.class_entry.pack()
-        self.class_entry.insert(0, "0")
+        # Список классов
+        self.classes = ["cat", "dog", "car", "person"]  # Пример классов
+        self.class_var = tk.StringVar(value=self.classes[0])  # Текущий выбранный класс
+
+        # Выпадающий список для выбора класса
+        self.class_combobox = ttk.Combobox(root, textvariable=self.class_var, values=self.classes)
+        self.class_combobox.pack()
 
         self.load_button = tk.Button(root, text="Load Images", command=self.load_images)
         self.load_button.pack()
@@ -60,7 +64,8 @@ class YOLOAnnotationApp:
             with open(annotation_path, "r") as f:
                 for line in f.readlines():
                     class_id, x_center, y_center, width, height = map(float, line.strip().split())
-                    self.bboxes.append((class_id, x_center, y_center, width, height))
+                    class_name = self.classes[int(class_id)]  # Преобразуем ID в имя класса
+                    self.bboxes.append((class_name, x_center, y_center, width, height))
                     self.draw_bbox(x_center, y_center, width, height)
 
     def draw_bbox(self, x_center, y_center, width, height):
@@ -86,8 +91,8 @@ class YOLOAnnotationApp:
         y_center = ((self.start_y + end_y) / 2) / img_height
         width = abs(end_x - self.start_x) / img_width
         height = abs(end_y - self.start_y) / img_height
-        class_id = int(self.class_entry.get())
-        self.bboxes.append((class_id, x_center, y_center, width, height))
+        class_name = self.class_var.get()  # Получаем выбранный класс
+        self.bboxes.append((class_name, x_center, y_center, width, height))
 
     def save_annotations(self):
         if self.image_list:
@@ -95,7 +100,9 @@ class YOLOAnnotationApp:
             annotation_path = image_path.replace(".jpg", ".txt").replace(".png", ".txt").replace(".jpeg", ".txt")
             with open(annotation_path, "w") as f:
                 for bbox in self.bboxes:
-                    f.write(f"{int(bbox[0])} {bbox[1]} {bbox[2]} {bbox[3]} {bbox[4]}\n")
+                    class_name, x_center, y_center, width, height = bbox
+                    class_id = self.classes.index(class_name)  # Преобразуем имя класса в ID
+                    f.write(f"{class_id} {x_center} {y_center} {width} {height}\n")
 
     def next_image(self):
         # Сохраняем текущую аннотацию перед переходом к следующему изображению
