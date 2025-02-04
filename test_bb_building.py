@@ -98,6 +98,10 @@ class YOLOAnnotationApp:
                     f.write(f"{int(bbox[0])} {bbox[1]} {bbox[2]} {bbox[3]} {bbox[4]}\n")
 
     def next_image(self):
+        # Сохраняем текущую аннотацию перед переходом к следующему изображению
+        self.save_annotations()
+
+        # Переходим к следующему изображению
         if self.current_image_index < len(self.image_list) - 1:
             self.show_image(self.current_image_index + 1)
 
