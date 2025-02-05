@@ -1,4 +1,5 @@
 import os
+import shutil
 import tkinter as tk
 from tkinter import filedialog, ttk
 from PIL import Image, ImageTk
@@ -9,6 +10,7 @@ class YOLOAnnotationApp:
         self.root.title("YOLO Dataset Annotation Tool")
 
         self.image_folder = ""
+        self.annotated_folder = "annotated_data"  # Папка для обработанных данных
         self.image_list = []
         self.current_image_index = 0
         self.image_label = tk.Label(root)
@@ -41,11 +43,22 @@ class YOLOAnnotationApp:
         self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_button_release)
 
+        # Создаем папку для аннотированных данных, если она не существует
+        if not os.path.exists(self.annotated_folder):
+            os.makedirs(self.annotated_folder)
+
     def load_images(self):
         self.image_folder = filedialog.askdirectory()
-        self.image_list = [os.path.join(self.image_folder, f) for f in os.listdir(self.image_folder) if f.endswith(('.png', '.jpg', '.jpeg'))]
-        if self.image_list:
-            self.show_image(0)
+        if self.image_folder:
+            # Фильтруем изображения: исключаем те, которые уже в папке annotated_data
+            annotated_images = set(os.listdir(self.annotated_folder))
+            self.image_list = [
+                os.path.join(self.image_folder, f)
+                for f in os.listdir(self.image_folder)
+                if f.endswith(('.png', '.jpg', '.jpeg')) and f not in annotated_images
+            ]
+            if self.image_list:
+                self.show_image(0)
 
     def show_image(self, index):
         if 0 <= index < len(self.image_list):
@@ -103,6 +116,27 @@ class YOLOAnnotationApp:
                     class_name, x_center, y_center, width, height = bbox
                     class_id = self.classes.index(class_name)  # Преобразуем имя класса в ID
                     f.write(f"{class_id} {x_center} {y_center} {width} {height}\n")
+
+            # Перемещаем изображение и аннотацию в папку annotated_data
+            self.move_to_annotated(image_path, annotation_path)
+
+    def move_to_annotated(self, image_path, annotation_path):
+        """Перемещает изображение и аннотацию в папку annotated_data."""
+        image_name = os.path.basename(image_path)
+        annotation_name = os.path.basename(annotation_path)
+
+        # Перемещаем изображение
+        shutil.move(image_path, os.path.join(self.annotated_folder, image_name))
+        # Перемещаем аннотацию
+        if os.path.exists(annotation_path):
+            shutil.move(annotation_path, os.path.join(self.annotated_folder, annotation_name))
+
+        # Удаляем изображение из списка
+        self.image_list.pop(self.current_image_index)
+        if self.image_list:
+            self.show_image(min(self.current_image_index, len(self.image_list) - 1))
+        else:
+            self.canvas.delete("all")  # Очищаем холст, если изображений больше нет
 
     def next_image(self):
         # Сохраняем текущую аннотацию перед переходом к следующему изображению
